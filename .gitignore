@@ -10,3 +10,8 @@ data/
 .pytest_cache/
 .idea/
 .vscode/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
