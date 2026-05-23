@@ -4,7 +4,11 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "aiogram>=3.28.2",
+    "pydantic-settings>=2.14.1",
+    "structlog>=25.5.0",
+]
 
 [project.scripts]
 gym-tg-bot = "gym_tg_bot:main"
