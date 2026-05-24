@@ -6,7 +6,12 @@ from aiogram.filters import CommandStart
 from aiogram.types import Message
 
 from gym_tg_bot.config import Settings
+from gym_tg_bot.llm import LLMClient
 from gym_tg_bot.logging import configure_logging
+
+POST_COMMENTER_PROMPT = (
+    "Ты дружелюбный участник чата обсуждений Telegram-канала.Напиши комментарий к посту"
+)
 
 router = Router()
 
@@ -17,24 +22,27 @@ async def cmd_start(message: Message) -> None:
 
 
 @router.message(F.is_automatic_forward)
-async def on_channel_post_in_discussion(message: Message) -> None:
+async def on_channel_post_in_discussion(message: Message, llm: LLMClient) -> None:
     log = structlog.get_logger()
     text = message.text or message.caption or ""
 
-    log.info(
-        "channel post received",
-        chat_id=message.chat.id,
-        chat_title=message.chat.title,
-        original_chat_id=message.forward_from_chat.id if message.forward_from_chat else None,
-        message_id=message.message_id,
-        text_preview=text[:80],
-    )
+    if not text:
+        log.info("skipping post without text", message_id=message.message_id)
+        return
 
-    await message.reply(f"Echo: {text[:100]}")
+    log.info("channel post received", message_id=message.message_id, text_preview=text[:80])
+
+    try:
+        comment = await llm.ask(system=POST_COMMENTER_PROMPT, user=text)
+    except Exception:
+        log.exception("llm failed to generate comment")
+        return
+
+    await message.reply(comment)
 
 
 @router.message(F.chat.type == "supergroup", F.reply_to_message)
-async def on_thread_reply(message: Message, bot: Bot) -> None:
+async def on_thread_reply(message: Message, bot: Bot, llm: LLMClient) -> None:
     log = structlog.get_logger()
     reply_to = message.reply_to_message
     if reply_to is None:
@@ -72,12 +80,18 @@ async def on_thread_reply(message: Message, bot: Bot) -> None:
 
 
 async def main() -> None:
-    settings = Settings()  # type: ignore[call-arg]  # bot_token comes from env
+    settings = Settings()  # type: ignore[call-arg]
     configure_logging(settings.log_level)
     log = structlog.get_logger()
 
     bot = Bot(token=settings.bot_token.get_secret_value())
+    llm = LLMClient(
+        api_key=settings.openai_api_key.get_secret_value(),
+        model=settings.openai_model,
+    )
+
     dp = Dispatcher()
+    dp["llm"] = llm
     dp.include_router(router)
 
     log.info("bot starting")
