@@ -13,6 +13,12 @@ POST_COMMENTER_PROMPT = (
     "Ты дружелюбный участник чата обсуждений Telegram-канала.Напиши комментарий к посту"
 )
 
+DISCUSSION_REPLY_PROMPT = (
+    "Ты участник чата обсуждений Telegram-канала. "
+    "Вам показывают предыдущее сообщение (пост канала или твой прошлый ответ) "
+    "и реплику пользователя. Ответь по существу, 1-3 предложения, без эмодзи."
+)
+
 router = Router()
 
 
@@ -51,32 +57,41 @@ async def on_thread_reply(message: Message, bot: Bot, llm: LLMClient) -> None:
     bot_user = await bot.me()
     reply_to_user = reply_to.from_user
 
-    addresses_bot = (
-        reply_to.is_automatic_forward  # original post reply
-        or (reply_to_user is not None and reply_to_user.id == bot_user.id)  # bots reply
+    addresses_bot = reply_to.is_automatic_forward or (
+        reply_to_user is not None and reply_to_user.id == bot_user.id
     )
-
     if not addresses_bot:
         log.debug(
-            "ignoring side conversation in thread",
+            "ignoring side conversation",
             chat_id=message.chat.id,
             message_id=message.message_id,
         )
         return
 
-    user_id = message.from_user.id if message.from_user else None
-    text = message.text or message.caption or "<media>"
+    user_text = message.text or message.caption or ""
+    if not user_text:
+        log.info("skipping non-text reply", message_id=message.message_id)
+        return
+
+    context_text = reply_to.text or reply_to.caption or ""
 
     log.info(
         "thread reply addressed to bot",
         chat_id=message.chat.id,
-        user_id=user_id,
-        reply_to_message_id=reply_to.message_id,
+        user_id=message.from_user.id if message.from_user else None,
         replied_to_bot=not reply_to.is_automatic_forward,
-        text_preview=text[:80],
+        text_preview=user_text[:80],
     )
 
-    await message.reply("Message received.")
+    prompt = f"Context:{context_text}\nUser's message:{user_text}"
+
+    try:
+        answer = await llm.ask(system=DISCUSSION_REPLY_PROMPT, user=prompt)
+    except Exception:
+        log.exception("llm failed to generate reply")
+        return
+
+    await message.reply(answer)
 
 
 async def main() -> None:
