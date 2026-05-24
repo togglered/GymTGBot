@@ -6,4 +6,6 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     bot_token: SecretStr
+    openai_api_key: SecretStr
+    openai_model: str = "gpt-4o-mini"
     log_level: str = "INFO"

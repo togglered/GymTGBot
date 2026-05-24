@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "aiogram>=3.28.2",
+    "openai>=2.38.0",
     "pydantic-settings>=2.14.1",
     "structlog>=25.5.0",
 ]
