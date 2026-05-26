@@ -1,13 +1,16 @@
 import asyncio
+from typing import cast
 
 import structlog
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.filters import CommandStart
 from aiogram.types import Message
+from openai.types.chat import ChatCompletionMessageParam
 
 from gym_tg_bot.config import Settings
 from gym_tg_bot.llm import LLMClient
 from gym_tg_bot.logging import configure_logging
+from gym_tg_bot.memory import ThreadMemory
 
 POST_COMMENTER_PROMPT = (
     "Ты дружелюбный участник чата обсуждений Telegram-канала.Напиши комментарий к посту"
@@ -15,8 +18,8 @@ POST_COMMENTER_PROMPT = (
 
 DISCUSSION_REPLY_PROMPT = (
     "Ты участник чата обсуждений Telegram-канала. "
-    "Вам показывают предыдущее сообщение (пост канала или твой прошлый ответ) "
-    "и реплику пользователя. Ответь по существу, 1-3 предложения, без эмодзи."
+    "Поддерживай разговор в треде. Ответь по существу, "
+    "1-3 предложения, без эмодзи."
 )
 
 router = Router()
@@ -28,7 +31,9 @@ async def cmd_start(message: Message) -> None:
 
 
 @router.message(F.is_automatic_forward)
-async def on_channel_post_in_discussion(message: Message, llm: LLMClient) -> None:
+async def on_channel_post_in_discussion(
+    message: Message, llm: LLMClient, memory: ThreadMemory
+) -> None:
     log = structlog.get_logger()
     text = message.text or message.caption or ""
 
@@ -36,13 +41,18 @@ async def on_channel_post_in_discussion(message: Message, llm: LLMClient) -> Non
         log.info("skipping post without text", message_id=message.message_id)
         return
 
+    thread_id = message.message_thread_id or message.message_id
+    memory.add(message.chat.id, thread_id, "user", text)
+    history = cast(
+        list[ChatCompletionMessageParam],
+        memory.get(message.chat.id, thread_id),
+    )
+
     log.info("channel post received", message_id=message.message_id, text_preview=text[:80])
 
     try:
-        comment = await llm.chat(
-            system=POST_COMMENTER_PROMPT,
-            messages=[{"role": "user", "content": text}],
-        )
+        comment = await llm.chat(system=POST_COMMENTER_PROMPT, messages=history)
+        memory.add(message.chat.id, thread_id, "assistant", comment)
     except Exception:
         log.exception("llm failed to generate comment")
         return
@@ -51,7 +61,7 @@ async def on_channel_post_in_discussion(message: Message, llm: LLMClient) -> Non
 
 
 @router.message(F.chat.type == "supergroup", F.reply_to_message)
-async def on_thread_reply(message: Message, bot: Bot, llm: LLMClient) -> None:
+async def on_thread_reply(message: Message, bot: Bot, llm: LLMClient, memory: ThreadMemory) -> None:
     log = structlog.get_logger()
     reply_to = message.reply_to_message
     if reply_to is None:
@@ -76,8 +86,6 @@ async def on_thread_reply(message: Message, bot: Bot, llm: LLMClient) -> None:
         log.info("skipping non-text reply", message_id=message.message_id)
         return
 
-    context_text = reply_to.text or reply_to.caption or ""
-
     log.info(
         "thread reply addressed to bot",
         chat_id=message.chat.id,
@@ -86,13 +94,16 @@ async def on_thread_reply(message: Message, bot: Bot, llm: LLMClient) -> None:
         text_preview=user_text[:80],
     )
 
-    prompt = f"Context:{context_text}\nUser's message:{user_text}"
+    thread_id = message.message_thread_id or message.message_id
+    memory.add(message.chat.id, thread_id, "user", user_text)
+    history = cast(
+        list[ChatCompletionMessageParam],
+        memory.get(message.chat.id, thread_id),
+    )
 
     try:
-        answer = await llm.chat(
-            system=DISCUSSION_REPLY_PROMPT,
-            messages=[{"role": "user", "content": prompt}],
-        )
+        answer = await llm.chat(system=DISCUSSION_REPLY_PROMPT, messages=history)
+        memory.add(message.chat.id, thread_id, "assistant", answer)
     except Exception:
         log.exception("llm failed to generate reply")
         return
@@ -110,9 +121,11 @@ async def main() -> None:
         api_key=settings.openai_api_key.get_secret_value(),
         model=settings.openai_model,
     )
+    memory = ThreadMemory()
 
     dp = Dispatcher()
     dp["llm"] = llm
+    dp["memory"] = memory
     dp.include_router(router)
 
     log.info("bot starting")
