@@ -7,14 +7,14 @@ class LLMClient:
         self._client = AsyncOpenAI(api_key=api_key)
         self._model = model
 
-    async def ask(self, system: str, user: str) -> str:
-        messages: list[ChatCompletionMessageParam] = [
+    async def chat(self, system: str, messages: list[ChatCompletionMessageParam]) -> str:
+        api_messages: list[ChatCompletionMessageParam] = [
             {"role": "system", "content": system},
-            {"role": "user", "content": user},
+            *messages,
         ]
         response = await self._client.chat.completions.create(
             model=self._model,
-            messages=messages,
+            messages=api_messages,
         )
         content = response.choices[0].message.content
         if content is None:

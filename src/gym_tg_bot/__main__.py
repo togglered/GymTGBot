@@ -39,7 +39,10 @@ async def on_channel_post_in_discussion(message: Message, llm: LLMClient) -> Non
     log.info("channel post received", message_id=message.message_id, text_preview=text[:80])
 
     try:
-        comment = await llm.ask(system=POST_COMMENTER_PROMPT, user=text)
+        comment = await llm.chat(
+            system=POST_COMMENTER_PROMPT,
+            messages=[{"role": "user", "content": text}],
+        )
     except Exception:
         log.exception("llm failed to generate comment")
         return
@@ -86,7 +89,10 @@ async def on_thread_reply(message: Message, bot: Bot, llm: LLMClient) -> None:
     prompt = f"Context:{context_text}\nUser's message:{user_text}"
 
     try:
-        answer = await llm.ask(system=DISCUSSION_REPLY_PROMPT, user=prompt)
+        answer = await llm.chat(
+            system=DISCUSSION_REPLY_PROMPT,
+            messages=[{"role": "user", "content": prompt}],
+        )
     except Exception:
         log.exception("llm failed to generate reply")
         return
