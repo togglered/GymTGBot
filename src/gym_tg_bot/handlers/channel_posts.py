@@ -21,6 +21,7 @@ async def on_channel_post(message: Message, post_service: PostService) -> None:
             chat_id=message.chat.id,
             message_id=message.message_id,
             text=text,
+            created_at=int(message.date.timestamp()),
         )
     except Exception:
         log.exception("failed to ingest channel post", message_id=message.message_id)

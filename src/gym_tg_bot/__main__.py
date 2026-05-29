@@ -40,7 +40,14 @@ async def main() -> None:
     vector_store = VectorStore(path=settings.qdrant_path, vector_size=OPENAI_EMBEDDING_SIZE)
     await vector_store.ensure_collection()
 
-    post_service = PostService(llm=llm, memory=memory, embedder=embedder, vector_store=vector_store)
+    post_service = PostService(
+        llm=llm,
+        memory=memory,
+        embedder=embedder,
+        vector_store=vector_store,
+        retrieval_top_k=settings.retrieval_top_k,
+        retrieval_score_threshold=settings.retrieval_score_threshold,
+    )
 
     dp = Dispatcher()
     dp["post_service"] = post_service

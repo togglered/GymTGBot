@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     qdrant_path: Path = Path("./data/qdrant")
+    retrieval_top_k: int = 3
+    retrieval_score_threshold: float = 0.7
 
     bot_token: SecretStr
     openai_api_key: SecretStr

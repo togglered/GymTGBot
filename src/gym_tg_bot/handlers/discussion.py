@@ -4,14 +4,18 @@ from aiogram.types import Message
 
 from gym_tg_bot.services.post_service import PostService
 
+BASE_PROMPT = (
+    "Обращайся к пользователю на Вы, используй обращение 'Сэр'."
+    "Используй официальный тип общения."
+    "Ты тренер, твоя задача следить за прогрессом тренировок в этом Телеграм канале."
+)
+
 POST_COMMENTER_PROMPT = (
-    "Ты дружелюбный участник чата обсуждений Telegram-канала. Напиши комментарий к посту"
+    f"{BASE_PROMPT}Твоя задача следить за прогрессом тренировок в этом Телеграм канале."
 )
 
 DISCUSSION_REPLY_PROMPT = (
-    "Ты участник чата обсуждений Telegram-канала. "
-    "Поддерживай разговор в треде. Ответь по существу, "
-    "1-3 предложения, без эмодзи."
+    f"{BASE_PROMPT}Твоя задача ответить на сообщение пользователя в чате обсуждений"
 )
 
 discussion_router = Router()
@@ -32,6 +36,7 @@ async def on_channel_post_in_discussion(message: Message, post_service: PostServ
             thread_id=message.message_thread_id or message.message_id,
             text=text,
             system_prompt=POST_COMMENTER_PROMPT,
+            exclude_message_id=message.forward_from_message_id,
         )
     except Exception:
         log.exception("llm failed to generate comment")
