@@ -1,26 +1,16 @@
 import asyncio
-from typing import cast
 
 import structlog
-from aiogram import Bot, Dispatcher, F, Router
+from aiogram import Bot, Dispatcher, Router
 from aiogram.filters import CommandStart
 from aiogram.types import Message
-from openai.types.chat import ChatCompletionMessageParam
 
 from gym_tg_bot.config import Settings
+from gym_tg_bot.handlers.discussion import discussion_router
 from gym_tg_bot.llm import LLMClient
 from gym_tg_bot.logging import configure_logging
 from gym_tg_bot.memory import ThreadMemory
-
-POST_COMMENTER_PROMPT = (
-    "Ты дружелюбный участник чата обсуждений Telegram-канала.Напиши комментарий к посту"
-)
-
-DISCUSSION_REPLY_PROMPT = (
-    "Ты участник чата обсуждений Telegram-канала. "
-    "Поддерживай разговор в треде. Ответь по существу, "
-    "1-3 предложения, без эмодзи."
-)
+from gym_tg_bot.services.post_service import PostService
 
 router = Router()
 
@@ -28,87 +18,6 @@ router = Router()
 @router.message(CommandStart())
 async def cmd_start(message: Message) -> None:
     await message.answer("Hi!")
-
-
-@router.message(F.is_automatic_forward)
-async def on_channel_post_in_discussion(
-    message: Message, llm: LLMClient, memory: ThreadMemory
-) -> None:
-    log = structlog.get_logger()
-    text = message.text or message.caption or ""
-
-    if not text:
-        log.info("skipping post without text", message_id=message.message_id)
-        return
-
-    thread_id = message.message_thread_id or message.message_id
-    memory.add(message.chat.id, thread_id, "user", text)
-    history = cast(
-        list[ChatCompletionMessageParam],
-        memory.get(message.chat.id, thread_id),
-    )
-
-    log.info("channel post received", message_id=message.message_id, text_preview=text[:80])
-
-    try:
-        comment = await llm.chat(system=POST_COMMENTER_PROMPT, messages=history)
-        memory.add(message.chat.id, thread_id, "assistant", comment)
-    except Exception:
-        log.exception("llm failed to generate comment")
-        return
-
-    await message.reply(comment)
-
-
-@router.message(F.chat.type == "supergroup", F.reply_to_message)
-async def on_thread_reply(message: Message, bot: Bot, llm: LLMClient, memory: ThreadMemory) -> None:
-    log = structlog.get_logger()
-    reply_to = message.reply_to_message
-    if reply_to is None:
-        return
-
-    bot_user = await bot.me()
-    reply_to_user = reply_to.from_user
-
-    addresses_bot = reply_to.is_automatic_forward or (
-        reply_to_user is not None and reply_to_user.id == bot_user.id
-    )
-    if not addresses_bot:
-        log.debug(
-            "ignoring side conversation",
-            chat_id=message.chat.id,
-            message_id=message.message_id,
-        )
-        return
-
-    user_text = message.text or message.caption or ""
-    if not user_text:
-        log.info("skipping non-text reply", message_id=message.message_id)
-        return
-
-    log.info(
-        "thread reply addressed to bot",
-        chat_id=message.chat.id,
-        user_id=message.from_user.id if message.from_user else None,
-        replied_to_bot=not reply_to.is_automatic_forward,
-        text_preview=user_text[:80],
-    )
-
-    thread_id = message.message_thread_id or message.message_id
-    memory.add(message.chat.id, thread_id, "user", user_text)
-    history = cast(
-        list[ChatCompletionMessageParam],
-        memory.get(message.chat.id, thread_id),
-    )
-
-    try:
-        answer = await llm.chat(system=DISCUSSION_REPLY_PROMPT, messages=history)
-        memory.add(message.chat.id, thread_id, "assistant", answer)
-    except Exception:
-        log.exception("llm failed to generate reply")
-        return
-
-    await message.reply(answer)
 
 
 async def main() -> None:
@@ -122,11 +31,12 @@ async def main() -> None:
         model=settings.openai_model,
     )
     memory = ThreadMemory()
+    post_service = PostService(llm=llm, memory=memory)
 
     dp = Dispatcher()
-    dp["llm"] = llm
-    dp["memory"] = memory
+    dp["post_service"] = post_service
     dp.include_router(router)
+    dp.include_router(discussion_router)
 
     log.info("bot starting")
     try:
