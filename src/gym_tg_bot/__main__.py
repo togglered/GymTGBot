@@ -6,11 +6,14 @@ from aiogram.filters import CommandStart
 from aiogram.types import Message
 
 from gym_tg_bot.config import Settings
+from gym_tg_bot.embeddings import OPENAI_EMBEDDING_SIZE, OpenAIEmbedder
+from gym_tg_bot.handlers.channel_posts import channel_posts_router
 from gym_tg_bot.handlers.discussion import discussion_router
 from gym_tg_bot.llm import OpenAILLMClient
 from gym_tg_bot.logging import configure_logging
 from gym_tg_bot.memory import ThreadMemory
 from gym_tg_bot.services.post_service import PostService
+from gym_tg_bot.vector_store import VectorStore
 
 router = Router()
 
@@ -31,12 +34,19 @@ async def main() -> None:
         model=settings.openai_model,
     )
     memory = ThreadMemory()
-    post_service = PostService(llm=llm, memory=memory)
+    embedder = OpenAIEmbedder(
+        api_key=settings.openai_api_key.get_secret_value(),
+    )
+    vector_store = VectorStore(path=settings.qdrant_path, vector_size=OPENAI_EMBEDDING_SIZE)
+    await vector_store.ensure_collection()
+
+    post_service = PostService(llm=llm, memory=memory, embedder=embedder, vector_store=vector_store)
 
     dp = Dispatcher()
     dp["post_service"] = post_service
     dp.include_router(router)
     dp.include_router(discussion_router)
+    dp.include_router(channel_posts_router)
 
     log.info("bot starting")
     try:

@@ -8,6 +8,7 @@ dependencies = [
     "aiogram>=3.28.2",
     "openai>=2.38.0",
     "pydantic-settings>=2.14.1",
+    "qdrant-client>=1.18.0",
     "structlog>=25.5.0",
 ]
 
