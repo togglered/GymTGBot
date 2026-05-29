@@ -7,7 +7,7 @@ from aiogram.types import Message
 
 from gym_tg_bot.config import Settings
 from gym_tg_bot.handlers.discussion import discussion_router
-from gym_tg_bot.llm import LLMClient
+from gym_tg_bot.llm import OpenAILLMClient
 from gym_tg_bot.logging import configure_logging
 from gym_tg_bot.memory import ThreadMemory
 from gym_tg_bot.services.post_service import PostService
@@ -26,7 +26,7 @@ async def main() -> None:
     log = structlog.get_logger()
 
     bot = Bot(token=settings.bot_token.get_secret_value())
-    llm = LLMClient(
+    llm = OpenAILLMClient(
         api_key=settings.openai_api_key.get_secret_value(),
         model=settings.openai_model,
     )
