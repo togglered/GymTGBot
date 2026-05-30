@@ -7,12 +7,14 @@ from aiogram.types import Message
 
 from gym_tg_bot.config import Settings
 from gym_tg_bot.embeddings import OPENAI_EMBEDDING_SIZE, OpenAIEmbedder
-from gym_tg_bot.handlers.channel_posts import channel_posts_router
 from gym_tg_bot.handlers.discussion import discussion_router
 from gym_tg_bot.llm import OpenAILLMClient
 from gym_tg_bot.logging import configure_logging
 from gym_tg_bot.memory import ThreadMemory
-from gym_tg_bot.services.post_service import PostService
+from gym_tg_bot.services.post_ingest_service import PostIngestService
+from gym_tg_bot.services.post_responder_service import PostResponderService
+from gym_tg_bot.tools.base import Tool
+from gym_tg_bot.tools.search_memory import SearchMemoryTool
 from gym_tg_bot.vector_store import VectorStore
 
 router = Router()
@@ -40,20 +42,24 @@ async def main() -> None:
     vector_store = VectorStore(path=settings.qdrant_path, vector_size=OPENAI_EMBEDDING_SIZE)
     await vector_store.ensure_collection()
 
-    post_service = PostService(
-        llm=llm,
-        memory=memory,
-        embedder=embedder,
-        vector_store=vector_store,
-        retrieval_top_k=settings.retrieval_top_k,
-        retrieval_score_threshold=settings.retrieval_score_threshold,
-    )
-
     dp = Dispatcher()
+
+    ingest_service = PostIngestService(embedder=embedder, vector_store=vector_store)
+    tools: list[Tool] = [
+        SearchMemoryTool(
+            embedder,
+            vector_store,
+            top_k=settings.retrieval_top_k,
+            score_threshold=settings.retrieval_score_threshold,
+        ),
+    ]
+    post_service = PostResponderService(llm=llm, memory=memory, tools=tools)
+
     dp["post_service"] = post_service
+    dp["post_ingest_service"] = ingest_service
+
     dp.include_router(router)
     dp.include_router(discussion_router)
-    dp.include_router(channel_posts_router)
 
     log.info("bot starting")
     try:
