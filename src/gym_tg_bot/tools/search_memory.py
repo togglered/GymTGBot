@@ -45,6 +45,7 @@ class SearchMemoryTool(Tool):
         )
         if not posts:
             return "No similar posts were found."
+        posts.sort(key=lambda p: p["created_at"], reverse=True)
         lines = []
         for p in posts:
             date_str = datetime.fromtimestamp(p["created_at"], tz=UTC).strftime("%Y-%m-%d")
