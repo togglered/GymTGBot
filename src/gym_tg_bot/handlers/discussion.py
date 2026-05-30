@@ -2,12 +2,16 @@ import structlog
 from aiogram import Bot, F, Router
 from aiogram.types import Message
 
-from gym_tg_bot.services.post_service import PostService
+from gym_tg_bot.services.post_ingest_service import PostIngestService
+from gym_tg_bot.services.post_responder_service import PostResponderService
 
 BASE_PROMPT = (
-    "Обращайся к пользователю на Вы, используй обращение 'Сэр'."
-    "Используй официальный тип общения."
-    "Ты тренер, твоя задача следить за прогрессом тренировок в этом Телеграм канале."
+    "Ты тренер, следишь за прогрессом тренировок в этом Telegram-канале. "
+    "Обращайся к пользователю на Вы, используй обращение 'Сэр', официальный стиль. "
+    "У тебя есть инструмент search_memory — им ты можешь искать предыдущие посты канала "
+    "по запросу. ОБЯЗАТЕЛЬНО используй его когда пользователь спрашивает о прогрессе, "
+    "сравнении с прошлыми тренировками, или упоминает упражнения — чтобы найти "
+    "историю по этому упражнению. Не отвечай 'не знаю', не проверив память."
 )
 
 POST_COMMENTER_PROMPT = (
@@ -22,7 +26,11 @@ discussion_router = Router()
 
 
 @discussion_router.message(F.is_automatic_forward)
-async def on_channel_post_in_discussion(message: Message, post_service: PostService) -> None:
+async def on_channel_post_in_discussion(
+    message: Message,
+    post_service: PostResponderService,
+    post_ingest_service: PostIngestService,
+) -> None:
     log = structlog.get_logger()
     text = message.text or message.caption or ""
 
@@ -36,7 +44,6 @@ async def on_channel_post_in_discussion(message: Message, post_service: PostServ
             thread_id=message.message_thread_id or message.message_id,
             text=text,
             system_prompt=POST_COMMENTER_PROMPT,
-            exclude_message_id=message.forward_from_message_id,
         )
     except Exception:
         log.exception("llm failed to generate comment")
@@ -44,9 +51,26 @@ async def on_channel_post_in_discussion(message: Message, post_service: PostServ
 
     await message.reply(answer)
 
+    fwd_chat = message.forward_from_chat
+    fwd_message_id = message.forward_from_message_id
+    fwd_date = message.forward_date
+    if fwd_chat is None or fwd_message_id is None or fwd_date is None:
+        log.info("skipping ingest, not a channel forward", message_id=message.message_id)
+        return
+    try:
+        await post_ingest_service.ingest(
+            chat_id=fwd_chat.id,
+            message_id=fwd_message_id,
+            text=text,
+            created_at=int(fwd_date.timestamp()),
+        )
+        log.info("channel post ingested", message_id=fwd_message_id)
+    except Exception:
+        log.exception("failed to ingest channel post", message_id=fwd_message_id)
+
 
 @discussion_router.message(F.chat.type == "supergroup", F.reply_to_message)
-async def on_thread_reply(message: Message, bot: Bot, post_service: PostService) -> None:
+async def on_thread_reply(message: Message, bot: Bot, post_service: PostResponderService) -> None:
     log = structlog.get_logger()
     reply_to = message.reply_to_message
     if reply_to is None:
