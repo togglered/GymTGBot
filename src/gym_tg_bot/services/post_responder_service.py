@@ -26,9 +26,9 @@ class PostResponderService:
             text_preview=text[:80],
             available_tools=list(self._tools_by_name.keys()),
         )
-        self._memory.add(chat_id, thread_id, "user", text)
-        messages: list[ChatMessage | ToolCall | ToolResult] = list(
-            self._memory.get(chat_id, thread_id)
+        await self._memory.add(chat_id, thread_id, ChatMessage("user", text))
+        messages: list[ChatMessage | ToolCall | ToolResult] = await self._memory.get(
+            chat_id, thread_id
         )
 
         iteration = 0
@@ -46,7 +46,7 @@ class PostResponderService:
                     iteration=iteration,
                     answer_preview=result[:120],
                 )
-                self._memory.add(chat_id, thread_id, "assistant", result)
+                await self._memory.add(chat_id, thread_id, ChatMessage("assistant", result))
                 return result
             log.info(
                 "llm requested tool calls",

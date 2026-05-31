@@ -1,36 +1,91 @@
-from gym_tg_bot.chat import ChatMessage
-from gym_tg_bot.memory import _MAX_HISTORY, ThreadMemory
+from pathlib import Path
+
+import pytest
+
+from gym_tg_bot.chat import ChatMessage, ToolCall, ToolResult
+from gym_tg_bot.memory import ThreadMemory
 
 
-def test_thread_memory() -> None:
-    mem = ThreadMemory()
-    mem.add(chat_id=1, thread_id=10, role="user", content="hello")
-    mem.add(chat_id=1, thread_id=10, role="assistant", content="hi")
+@pytest.fixture
+async def mem(tmp_path: Path) -> ThreadMemory:
+    memory = ThreadMemory(tmp_path / "test.db")
+    await memory.ensure_schema()
+    return memory
 
-    assert mem.get(1, 10) == [
-        ChatMessage(role="user", content="hello"),
-        ChatMessage(role="assistant", content="hi"),
+
+@pytest.mark.asyncio
+async def test_chat_message_round_trip(mem: ThreadMemory) -> None:
+    msg = ChatMessage(role="user", content="hello")
+    await mem.add(chat_id=1, thread_id=10, item=msg)
+
+    assert await mem.get(1, 10) == [msg]
+
+
+@pytest.mark.asyncio
+async def test_tool_call_round_trip(mem: ThreadMemory) -> None:
+    msg = ToolCall(
+        id="12345",
+        name="search_memory",
+        arguments={"query": "squat"},
+    )
+    await mem.add(chat_id=2, thread_id=13, item=msg)
+
+    assert await mem.get(2, 13) == [msg]
+
+
+@pytest.mark.asyncio
+async def test_tool_result_round_trip(mem: ThreadMemory) -> None:
+    msg = ToolResult(tool_call_id="12345", content="Nothing found.")
+    await mem.add(chat_id=2, thread_id=13, item=msg)
+
+    assert await mem.get(2, 13) == [msg]
+
+
+@pytest.mark.asyncio
+async def test_thread_isolation(mem: ThreadMemory) -> None:
+    msg1 = ChatMessage(role="user", content="hi!")
+    await mem.add(chat_id=1, thread_id=15, item=msg1)
+    msg2 = ChatMessage(role="user", content="hello")
+    await mem.add(chat_id=1, thread_id=20, item=msg2)
+
+    assert await mem.get(1, 15) == [msg1]
+    assert await mem.get(1, 20) == [msg2]
+
+
+@pytest.mark.asyncio
+async def test_chat_isolation(mem: ThreadMemory) -> None:
+    """
+    Different chats, same thread_id's
+    """
+    msg1 = ChatMessage(role="user", content="hi!")
+    await mem.add(chat_id=1, thread_id=15, item=msg1)
+    msg2 = ChatMessage(role="user", content="hello")
+    await mem.add(chat_id=2, thread_id=15, item=msg2)
+
+    assert await mem.get(1, 15) == [msg1]
+    assert await mem.get(2, 15) == [msg2]
+
+
+@pytest.mark.asyncio
+async def test_empty_thread(mem: ThreadMemory) -> None:
+    await mem.add(chat_id=1, thread_id=15, item=ChatMessage(role="user", content="hi!"))
+
+    assert await mem.get(1, 20) == []
+
+
+@pytest.mark.asyncio
+async def test_mixed_order(mem: ThreadMemory) -> None:
+    msgs: list[ChatMessage | ToolCall | ToolResult] = [
+        ChatMessage(role="user", content="hi!"),
+        ToolResult(tool_call_id="12345", content="Nothing found."),
+        ToolCall(
+            id="12345",
+            name="search_memory",
+            arguments={"query": "squat"},
+        ),
+        ChatMessage(role="user", content="okey"),
     ]
+    for msg in msgs:
+        await mem.add(chat_id=1, thread_id=15, item=msg)
 
-
-def test_memory_capacity() -> None:
-    mem = ThreadMemory()
-    for i in range(_MAX_HISTORY + 10):
-        mem.add(chat_id=1, thread_id=10, role="user", content=f"msg-{i}")
-    history = mem.get(chat_id=1, thread_id=10)
-    assert len(history) == _MAX_HISTORY
-    assert history[0].content == "msg-10"
-    assert history[-1].content == f"msg-{_MAX_HISTORY + 9}"
-
-
-def test_memory_isolation() -> None:
-    mem = ThreadMemory()
-    mem.add(1, 100, "user", "in thread A")
-    mem.add(1, 200, "user", "in thread B")
-
-    assert mem.get(1, 100) == [ChatMessage(role="user", content="in thread A")]
-    assert mem.get(1, 200) == [ChatMessage(role="user", content="in thread B")]
-
-
-def test_unknown_thread_returns_empty_list() -> None:
-    assert ThreadMemory().get(1, 1) == []
+    assert await mem.get(1, 15) == msgs
