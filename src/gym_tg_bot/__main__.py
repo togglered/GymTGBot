@@ -35,12 +35,14 @@ async def main() -> None:
         api_key=settings.openai_api_key.get_secret_value(),
         model=settings.openai_model,
     )
-    memory = ThreadMemory()
+    memory = ThreadMemory(settings.db_path)
     embedder = OpenAIEmbedder(
         api_key=settings.openai_api_key.get_secret_value(),
     )
     vector_store = VectorStore(path=settings.qdrant_path, vector_size=OPENAI_EMBEDDING_SIZE)
+
     await vector_store.ensure_collection()
+    await memory.ensure_schema()
 
     dp = Dispatcher()
 

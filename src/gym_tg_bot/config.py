@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     retrieval_top_k: int = 3
     retrieval_score_threshold: float = 0.7
 
+    db_path: Path = Path("data/gym_tg_bot.db")
+
     bot_token: SecretStr
     openai_api_key: SecretStr
     openai_model: str = "gpt-4o-mini"
