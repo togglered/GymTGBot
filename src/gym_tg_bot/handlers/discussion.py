@@ -1,3 +1,5 @@
+import base64
+
 import structlog
 from aiogram import Bot, F, Router
 from aiogram.types import Message
@@ -12,6 +14,9 @@ BASE_PROMPT = (
     "по запросу. ОБЯЗАТЕЛЬНО используй его когда пользователь спрашивает о прогрессе, "
     "сравнении с прошлыми тренировками, или упоминает упражнения — чтобы найти "
     "историю по этому упражнению. Не отвечай 'не знаю', не проверив память."
+    "Если пользователь присылает фото — его надо проанализировать. Если это фото фигуры "
+    "— дай визуальную оценку как тренер: телосложение, заметные изменения, ориентировочный "
+    "диапазон процента жира. Не отказывайся отвечать — дай полезный комментарий."
 )
 
 POST_COMMENTER_PROMPT = (
@@ -25,17 +30,29 @@ DISCUSSION_REPLY_PROMPT = (
 discussion_router = Router()
 
 
+async def _extract_image_data_urls(message: Message, bot: Bot) -> list[str]:
+    if not message.photo:
+        return []
+    buffer = await bot.download(message.photo[-1].file_id)
+    if buffer is None:
+        return []
+    raw = buffer.read()
+    b64 = base64.b64encode(raw).decode("ascii")
+    return [f"data:image/jpeg;base64,{b64}"]
+
+
 @discussion_router.message(F.is_automatic_forward)
 async def on_channel_post_in_discussion(
     message: Message,
+    bot: Bot,
     post_service: PostResponderService,
     post_ingest_service: PostIngestService,
 ) -> None:
     log = structlog.get_logger()
     text = message.text or message.caption or ""
 
-    if not text:
-        log.info("skipping post without text", message_id=message.message_id)
+    if not text and not message.photo:
+        log.info("skipping post without text and photos", message_id=message.message_id)
         return
 
     try:
@@ -44,6 +61,7 @@ async def on_channel_post_in_discussion(
             thread_id=message.message_thread_id or message.message_id,
             text=text,
             system_prompt=POST_COMMENTER_PROMPT,
+            image_data_urls=await _extract_image_data_urls(message, bot),
         )
     except Exception:
         log.exception("llm failed to generate comment")
@@ -91,8 +109,8 @@ async def on_thread_reply(message: Message, bot: Bot, post_service: PostResponde
         return
 
     user_text = message.text or message.caption or ""
-    if not user_text:
-        log.info("skipping non-text reply", message_id=message.message_id)
+    if not user_text and not message.photo:
+        log.info("skipping post without text and photos", message_id=message.message_id)
         return
 
     log.info(
@@ -109,6 +127,7 @@ async def on_thread_reply(message: Message, bot: Bot, post_service: PostResponde
             thread_id=message.message_thread_id or message.message_id,
             text=user_text,
             system_prompt=DISCUSSION_REPLY_PROMPT,
+            image_data_urls=await _extract_image_data_urls(message, bot),
         )
     except Exception:
         log.exception("llm failed to generate reply")
