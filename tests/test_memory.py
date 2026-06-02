@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from gym_tg_bot.chat import ChatMessage, ToolCall, ToolResult
+from gym_tg_bot.chat import ChatMessage, ImagePart, TextPart, ToolCall, ToolResult
 from gym_tg_bot.memory import ThreadMemory
 
 
@@ -89,3 +89,32 @@ async def test_mixed_order(mem: ThreadMemory) -> None:
         await mem.add(chat_id=1, thread_id=15, item=msg)
 
     assert await mem.get(1, 15) == msgs
+
+
+@pytest.mark.asyncio
+async def test_type_image(mem: ThreadMemory) -> None:
+    item = ChatMessage(
+        role="user",
+        content=[
+            TextPart(text="What do you see on this photo?"),
+            ImagePart(image_url="data:image/jpeg;base64,AAA"),
+        ],
+    )
+    await mem.add(chat_id=1, thread_id=1, item=item)
+    msgs = await mem.get(1, 1)
+    assert msgs == [item]
+
+
+@pytest.mark.asyncio
+async def test_role_check(mem: ThreadMemory) -> None:
+    user_msg = ChatMessage(role="user", content="What time is now?")
+    ai_msg = ChatMessage(role="assistant", content="16:00")
+    await mem.add(chat_id=1, thread_id=1, item=user_msg)
+    await mem.add(chat_id=1, thread_id=1, item=ai_msg)
+
+    msgs = await mem.get(1, 1)
+    first, second = msgs[0], msgs[1]
+    assert isinstance(first, ChatMessage)
+    assert isinstance(second, ChatMessage)
+    assert first.role == "user"
+    assert second.role == "assistant"

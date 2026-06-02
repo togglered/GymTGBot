@@ -2,10 +2,28 @@ import json
 import time
 from dataclasses import asdict
 from pathlib import Path
+from typing import Any
 
 import aiosqlite
 
-from gym_tg_bot.chat import ChatMessage, ToolCall, ToolResult
+from gym_tg_bot.chat import ChatMessage, ContentPart, ImagePart, TextPart, ToolCall, ToolResult
+
+
+def _deserialize_content(
+    content: str | list[dict[str, Any]],
+) -> str | list[ContentPart]:
+    if isinstance(content, str):
+        return content
+    parts: list[ContentPart] = []
+    for part in content:
+        match part["type"]:
+            case "text":
+                parts.append(TextPart(**part))
+            case "image_url":
+                parts.append(ImagePart(**part))
+            case _:
+                raise ValueError(f"unknown aprt type: {part}")
+    return parts
 
 
 class ThreadMemory:
@@ -49,6 +67,8 @@ class ThreadMemory:
                 kind = "tool_call"
             case ToolResult():
                 kind = "tool_result"
+            case _:
+                raise ValueError("unknown item")
         async with aiosqlite.connect(self._db_path) as db:
             await db.execute(
                 "INSERT INTO messages (chat_id, thread_id, kind, payload, created_at) "
@@ -72,7 +92,11 @@ class ThreadMemory:
                     data = json.loads(payload)
                     match kind:
                         case "chat":
-                            result.append(ChatMessage(**data))
+                            result.append(
+                                ChatMessage(
+                                    data["role"], content=_deserialize_content(data["content"])
+                                )
+                            )
                         case "tool_call":
                             result.append(ToolCall(**data))
                         case "tool_result":
