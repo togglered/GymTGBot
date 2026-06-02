@@ -2,10 +2,27 @@ import json
 from typing import Any, Protocol, cast
 
 from openai import AsyncOpenAI
-from openai.types.chat import ChatCompletionMessageParam
 from openai.types.chat.chat_completion_message_tool_call import ChatCompletionMessageToolCall
 
-from gym_tg_bot.chat import ChatMessage, ToolCall, ToolResult
+from gym_tg_bot.chat import ChatMessage, ContentPart, ToolCall, ToolResult
+
+
+def _content_to_api(content: str | list[ContentPart]) -> str | list[dict[str, object]]:
+    if isinstance(content, str):
+        return content
+    parts: list[dict[str, object]] = []
+    for part in content:
+        match part.type:
+            case "text":
+                parts.append({"type": "text", "text": part.text})
+            case "image_url":
+                parts.append(
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": part.image_url, "detail": "low"},
+                    }
+                )
+    return parts
 
 
 class LLMClient(Protocol):
@@ -25,12 +42,12 @@ class OpenAILLMClient:
         self._model = model
 
     async def chat(self, system: str, messages: list[ChatMessage]) -> str:
-        api_messages: list[ChatCompletionMessageParam] = [{"role": "system", "content": system}]
+        api_messages: list[Any] = [{"role": "system", "content": system}]
         for msg in messages:
             if msg.role == "user":
-                api_messages.append({"role": "user", "content": msg.content})
+                api_messages.append({"role": "user", "content": _content_to_api(msg.content)})
             else:
-                api_messages.append({"role": "assistant", "content": msg.content})
+                api_messages.append({"role": "assistant", "content": _content_to_api(msg.content)})
         response = await self._client.chat.completions.create(
             model=self._model,
             messages=api_messages,
@@ -50,7 +67,7 @@ class OpenAILLMClient:
         for msg in messages:
             match msg:
                 case ChatMessage():
-                    api_messages.append({"role": msg.role, "content": msg.content})
+                    api_messages.append({"role": msg.role, "content": _content_to_api(msg.content)})
                 case ToolCall():
                     api_messages.append(
                         {
