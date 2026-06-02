@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 
 from gym_tg_bot.embeddings import Embedder
-from gym_tg_bot.tools.base import Tool
+from gym_tg_bot.tools.base import Tool, ToolContext
 from gym_tg_bot.vector_store import VectorStore
 
 
@@ -35,8 +35,8 @@ class SearchMemoryTool(Tool):
         self._top_k = top_k
         self._score_threshold = score_threshold
 
-    async def __call__(self, **kwargs: object) -> str:
-        query = str(kwargs["query"])
+    async def __call__(self, arguments: dict[str, object], context: ToolContext) -> str:
+        query = str(arguments["query"])
         vector = await self._embedder.embed(query)
         posts = await self._vector_store.search_posts(
             vector=vector,

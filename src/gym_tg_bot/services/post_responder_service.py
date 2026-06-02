@@ -3,7 +3,7 @@ import structlog
 from gym_tg_bot.chat import ChatMessage, ToolCall, ToolResult
 from gym_tg_bot.llm import LLMClient
 from gym_tg_bot.memory import ThreadMemory
-from gym_tg_bot.tools.base import Tool
+from gym_tg_bot.tools.base import Tool, ToolContext
 
 
 class PostResponderService:
@@ -20,6 +20,7 @@ class PostResponderService:
         text: str,
         system_prompt: str,
     ) -> str:
+        context = ToolContext(chat_id=chat_id)
         log = structlog.get_logger().bind(chat_id=chat_id, thread_id=thread_id)
         log.info(
             "respond start",
@@ -55,11 +56,11 @@ class PostResponderService:
             )
             for tool_call in result:
                 messages.append(tool_call)
-                output = await self._execute_tool(tool_call, log)
+                output = await self._execute_tool(tool_call, context, log)
                 messages.append(output)
 
     async def _execute_tool(
-        self, tool_call: ToolCall, log: "structlog.stdlib.BoundLogger"
+        self, tool_call: ToolCall, context: ToolContext, log: "structlog.stdlib.BoundLogger"
     ) -> ToolResult:
         handler = self._tools_by_name.get(tool_call.name)
         if handler is None:
@@ -72,7 +73,7 @@ class PostResponderService:
             arguments=tool_call.arguments,
         )
         try:
-            content = await handler(**tool_call.arguments)
+            content = await handler(tool_call.arguments, context)
         except Exception:
             log.exception(
                 "tool exec failed",
