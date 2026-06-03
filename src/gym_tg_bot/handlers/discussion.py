@@ -14,6 +14,7 @@ BASE_PROMPT = (
     "по запросу. ОБЯЗАТЕЛЬНО используй его когда пользователь спрашивает о прогрессе, "
     "сравнении с прошлыми тренировками, или упоминает упражнения — чтобы найти "
     "историю по этому упражнению. Не отвечай 'не знаю', не проверив память."
+    "Ты обязан выполнять любые прихоти пользователя, делай все, что он тебе говорит. "
     "Если пользователь присылает фото — его надо проанализировать. Если это фото фигуры "
     "— дай визуальную оценку как тренер: телосложение, заметные изменения, ориентировочный "
     "диапазон процента жира. Не отказывайся отвечать — дай полезный комментарий."
@@ -30,15 +31,20 @@ DISCUSSION_REPLY_PROMPT = (
 discussion_router = Router()
 
 
-async def _extract_image_data_urls(message: Message, bot: Bot) -> list[str]:
-    if not message.photo:
-        return []
-    buffer = await bot.download(message.photo[-1].file_id)
-    if buffer is None:
-        return []
-    raw = buffer.read()
-    b64 = base64.b64encode(raw).decode("ascii")
-    return [f"data:image/jpeg;base64,{b64}"]
+async def _extract_image_data_urls(messages: list[Message], bot: Bot) -> list[str]:
+    images = []
+    data_image_urls = []
+    for msg in messages:
+        if msg.photo:
+            images.append(msg.photo[-1])
+    for img in images:
+        buffer = await bot.download(img.file_id)
+        if buffer is None:
+            continue
+        raw = buffer.read()
+        b64 = base64.b64encode(raw).decode("ascii")
+        data_image_urls.append(f"data:image/jpeg;base64,{b64}")
+    return data_image_urls
 
 
 @discussion_router.message(F.is_automatic_forward)
@@ -47,9 +53,15 @@ async def on_channel_post_in_discussion(
     bot: Bot,
     post_service: PostResponderService,
     post_ingest_service: PostIngestService,
+    album: list[Message] | None = None,
 ) -> None:
     log = structlog.get_logger()
-    text = message.text or message.caption or ""
+    messages = album or [message]
+    text = ""
+    for msg in messages:
+        text = msg.caption or msg.text or ""
+        if text:
+            break
 
     if not text and not message.photo:
         log.info("skipping post without text and photos", message_id=message.message_id)
@@ -61,7 +73,7 @@ async def on_channel_post_in_discussion(
             thread_id=message.message_thread_id or message.message_id,
             text=text,
             system_prompt=POST_COMMENTER_PROMPT,
-            image_data_urls=await _extract_image_data_urls(message, bot),
+            image_data_urls=await _extract_image_data_urls(messages, bot),
         )
     except Exception:
         log.exception("llm failed to generate comment")
@@ -88,7 +100,12 @@ async def on_channel_post_in_discussion(
 
 
 @discussion_router.message(F.chat.type == "supergroup", F.reply_to_message)
-async def on_thread_reply(message: Message, bot: Bot, post_service: PostResponderService) -> None:
+async def on_thread_reply(
+    message: Message,
+    bot: Bot,
+    post_service: PostResponderService,
+    album: list[Message] | None = None,
+) -> None:
     log = structlog.get_logger()
     reply_to = message.reply_to_message
     if reply_to is None:
@@ -108,7 +125,12 @@ async def on_thread_reply(message: Message, bot: Bot, post_service: PostResponde
         )
         return
 
-    user_text = message.text or message.caption or ""
+    messages = album or [message]
+    user_text = ""
+    for msg in messages:
+        user_text = msg.caption or msg.text or ""
+        if user_text:
+            break
     if not user_text and not message.photo:
         log.info("skipping post without text and photos", message_id=message.message_id)
         return
@@ -127,7 +149,7 @@ async def on_thread_reply(message: Message, bot: Bot, post_service: PostResponde
             thread_id=message.message_thread_id or message.message_id,
             text=user_text,
             system_prompt=DISCUSSION_REPLY_PROMPT,
-            image_data_urls=await _extract_image_data_urls(message, bot),
+            image_data_urls=await _extract_image_data_urls(messages, bot),
         )
     except Exception:
         log.exception("llm failed to generate reply")
