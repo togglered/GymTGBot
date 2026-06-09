@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from enum import StrEnum, auto
 from pathlib import Path
+from typing import TypedDict
 
 import aiosqlite
 
@@ -33,6 +34,16 @@ class WorkoutResult:
     set_number: int
     reps: int
     weight: float
+
+
+class SetDict(TypedDict):
+    reps: int
+    weight: float
+
+
+class ExerciseDict(TypedDict):
+    label: str
+    sets: list[SetDict]
 
 
 class WorkoutStore:
