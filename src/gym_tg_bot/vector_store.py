@@ -11,10 +11,11 @@ from qdrant_client.models import (
     VectorParams,
 )
 
-_COLLECTION = "channel_posts"
+_COLLECTION = "memories"
 
 
 class RetrievedPost(TypedDict):
+    id: str
     text: str
     created_at: int
 
@@ -74,8 +75,12 @@ class VectorStore:
                 continue
             posts.append(
                 {
+                    "id": str(point.id),
                     "text": str(point.payload.get("text", "")),
                     "created_at": int(point.payload.get("created_at", 0)),
                 }
             )
         return posts
+
+    async def delete_memory(self, point_id: str) -> None:
+        await self._client.delete(collection_name=_COLLECTION, points_selector=[point_id])
