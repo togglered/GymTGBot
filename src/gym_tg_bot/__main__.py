@@ -16,7 +16,10 @@ from gym_tg_bot.services.post_ingest_service import PostIngestService
 from gym_tg_bot.services.post_responder_service import PostResponderService
 from gym_tg_bot.tools.base import Tool
 from gym_tg_bot.tools.search_memory import SearchMemoryTool
+from gym_tg_bot.tools.workouts.add_workout import AddWorkoutTool
+from gym_tg_bot.tools.workouts.query_workout import QueryWorkoutTool
 from gym_tg_bot.vector_store import VectorStore
+from gym_tg_bot.workouts import WorkoutStore
 
 router = Router()
 
@@ -41,8 +44,10 @@ async def main() -> None:
         api_key=settings.openai_api_key.get_secret_value(),
     )
     vector_store = VectorStore(path=settings.qdrant_path, vector_size=OPENAI_EMBEDDING_SIZE)
+    workout_store = WorkoutStore(settings.db_path)
 
     await vector_store.ensure_collection()
+    await workout_store.ensure_schema()
     await memory.ensure_schema()
 
     dp = Dispatcher()
@@ -57,6 +62,8 @@ async def main() -> None:
             top_k=settings.retrieval_top_k,
             score_threshold=settings.retrieval_score_threshold,
         ),
+        AddWorkoutTool(workout_store),
+        QueryWorkoutTool(workout_store),
     ]
     post_service = PostResponderService(llm=llm, memory=memory, tools=tools)
 
