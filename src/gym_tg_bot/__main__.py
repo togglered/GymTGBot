@@ -11,6 +11,7 @@ from gym_tg_bot.handlers.discussion import discussion_router
 from gym_tg_bot.llm import OpenAILLMClient
 from gym_tg_bot.logging import configure_logging
 from gym_tg_bot.memory import ThreadMemory
+from gym_tg_bot.middlewares.album import AlbumMiddleware
 from gym_tg_bot.services.post_ingest_service import PostIngestService
 from gym_tg_bot.services.post_responder_service import PostResponderService
 from gym_tg_bot.tools.base import Tool
@@ -45,6 +46,8 @@ async def main() -> None:
     await memory.ensure_schema()
 
     dp = Dispatcher()
+
+    dp.message.middleware(AlbumMiddleware())
 
     ingest_service = PostIngestService(embedder=embedder, vector_store=vector_store)
     tools: list[Tool] = [

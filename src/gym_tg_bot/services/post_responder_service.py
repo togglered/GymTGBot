@@ -1,6 +1,6 @@
 import structlog
 
-from gym_tg_bot.chat import ChatMessage, ToolCall, ToolResult
+from gym_tg_bot.chat import ChatMessage, ContentPart, ImagePart, TextPart, ToolCall, ToolResult
 from gym_tg_bot.llm import LLMClient
 from gym_tg_bot.memory import ThreadMemory
 from gym_tg_bot.tools.base import Tool
@@ -19,6 +19,7 @@ class PostResponderService:
         thread_id: int,
         text: str,
         system_prompt: str,
+        image_data_urls: list[str] | None = None,
     ) -> str:
         log = structlog.get_logger().bind(chat_id=chat_id, thread_id=thread_id)
         log.info(
@@ -26,7 +27,16 @@ class PostResponderService:
             text_preview=text[:80],
             available_tools=list(self._tools_by_name.keys()),
         )
-        await self._memory.add(chat_id, thread_id, ChatMessage("user", text))
+        content: str | list[ContentPart]
+        if image_data_urls:
+            content = [
+                TextPart(text),
+                *(ImagePart(u) for u in image_data_urls),
+            ]
+        else:
+            content = text
+
+        await self._memory.add(chat_id, thread_id, ChatMessage("user", content))
         messages: list[ChatMessage | ToolCall | ToolResult] = await self._memory.get(
             chat_id, thread_id
         )
