@@ -1,7 +1,7 @@
 [project]
 name = "gym-tg-bot"
 version = "0.1.0"
-description = "Add your description here"
+description = "A Telegram AI agent for tracking gym progress. It replies in isolated chat threads, remembers long-term facts, stores workout history, and analyzes photos."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
