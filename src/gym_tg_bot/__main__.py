@@ -15,7 +15,7 @@ from gym_tg_bot.middlewares.album import AlbumMiddleware
 from gym_tg_bot.services.post_ingest_service import PostIngestService
 from gym_tg_bot.services.post_responder_service import PostResponderService
 from gym_tg_bot.tools.base import Tool
-from gym_tg_bot.tools.search_memory import SearchMemoryTool
+from gym_tg_bot.tools.memory.search_memory import SearchMemoryTool
 from gym_tg_bot.tools.workouts.add_workout import AddWorkoutTool
 from gym_tg_bot.tools.workouts.query_workout import QueryWorkoutTool
 from gym_tg_bot.vector_store import VectorStore

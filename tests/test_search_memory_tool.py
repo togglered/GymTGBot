@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from gym_tg_bot.tools.base import ToolContext
-from gym_tg_bot.tools.search_memory import SearchMemoryTool
+from gym_tg_bot.tools.memory.search_memory import SearchMemoryTool
 
 
 @pytest.mark.asyncio
@@ -13,7 +13,7 @@ async def test_returns_formatted_posts() -> None:
 
     vector_store = AsyncMock()
     vector_store.search_posts.return_value = [
-        {"text": "bench press 100kg", "created_at": 1700000000},
+        {"id": 123, "text": "bench press 100kg", "created_at": 1700000000},
     ]
 
     tool = SearchMemoryTool(embedder, vector_store, top_k=3, score_threshold=0.7)
@@ -43,9 +43,9 @@ async def test_returns_posts_newest_first() -> None:
 
     vector_store = AsyncMock()
     vector_store.search_posts.return_value = [
-        {"text": "bench press 80kg", "created_at": 1500000000},
-        {"text": "bench press 100kg", "created_at": 1700000000},
-        {"text": "bench press 90kg", "created_at": 1600000000},
+        {"id": 1, "text": "bench press 80kg", "created_at": 1500000000},
+        {"id": 2, "text": "bench press 100kg", "created_at": 1700000000},
+        {"id": 3, "text": "bench press 90kg", "created_at": 1600000000},
     ]
 
     tool = SearchMemoryTool(embedder, vector_store, top_k=3, score_threshold=0.7)
