@@ -12,9 +12,10 @@ from gym_tg_bot.llm import OpenAILLMClient
 from gym_tg_bot.logging import configure_logging
 from gym_tg_bot.memory import ThreadMemory
 from gym_tg_bot.middlewares.album import AlbumMiddleware
-from gym_tg_bot.services.post_ingest_service import PostIngestService
 from gym_tg_bot.services.post_responder_service import PostResponderService
 from gym_tg_bot.tools.base import Tool
+from gym_tg_bot.tools.memory.forget_memory import ForgetMemoryTool
+from gym_tg_bot.tools.memory.remember_memory import RememberMemoryTool
 from gym_tg_bot.tools.memory.search_memory import SearchMemoryTool
 from gym_tg_bot.tools.workouts.add_workout import AddWorkoutTool
 from gym_tg_bot.tools.workouts.query_workout import QueryWorkoutTool
@@ -54,7 +55,6 @@ async def main() -> None:
 
     dp.message.middleware(AlbumMiddleware())
 
-    ingest_service = PostIngestService(embedder=embedder, vector_store=vector_store)
     tools: list[Tool] = [
         SearchMemoryTool(
             embedder,
@@ -62,13 +62,21 @@ async def main() -> None:
             top_k=settings.retrieval_top_k,
             score_threshold=settings.retrieval_score_threshold,
         ),
+        RememberMemoryTool(
+            embedder,
+            vector_store,
+            top_k=settings.retrieval_top_k,
+            score_threshold=settings.retrieval_score_threshold,
+        ),
+        ForgetMemoryTool(
+            embedder, vector_store, score_threshold=settings.retrieval_score_threshold
+        ),
         AddWorkoutTool(workout_store),
         QueryWorkoutTool(workout_store),
     ]
     post_service = PostResponderService(llm=llm, memory=memory, tools=tools)
 
     dp["post_service"] = post_service
-    dp["post_ingest_service"] = ingest_service
 
     dp.include_router(router)
     dp.include_router(discussion_router)
