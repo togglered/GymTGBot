@@ -11,10 +11,11 @@ from qdrant_client.models import (
     VectorParams,
 )
 
-_COLLECTION = "channel_posts"
+_COLLECTION = "memories"
 
 
 class RetrievedPost(TypedDict):
+    id: str
     text: str
     created_at: int
 
@@ -45,21 +46,21 @@ class VectorStore:
 
     async def search_posts(
         self,
+        chat_id: int,
         vector: list[float],
         top_k: int,
         score_threshold: float,
         exclude_message_id: int | None = None,
     ) -> list[RetrievedPost]:
-        query_filter = None
+        query_filter = Filter()
         if exclude_message_id is not None:
-            query_filter = Filter(
-                must_not=[
-                    FieldCondition(
-                        key="message_id",
-                        match=MatchValue(value=exclude_message_id),
-                    )
-                ]
-            )
+            query_filter.must_not = [
+                FieldCondition(
+                    key="message_id",
+                    match=MatchValue(value=exclude_message_id),
+                )
+            ]
+        query_filter.must = [FieldCondition(key="chat_id", match=MatchValue(value=chat_id))]
         response = await self._client.query_points(
             collection_name=_COLLECTION,
             query=vector,
@@ -74,8 +75,12 @@ class VectorStore:
                 continue
             posts.append(
                 {
+                    "id": str(point.id),
                     "text": str(point.payload.get("text", "")),
                     "created_at": int(point.payload.get("created_at", 0)),
                 }
             )
         return posts
+
+    async def delete_memory(self, point_id: str) -> None:
+        await self._client.delete(collection_name=_COLLECTION, points_selector=[point_id])

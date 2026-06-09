@@ -39,6 +39,7 @@ class SearchMemoryTool(Tool):
         query = str(arguments["query"])
         vector = await self._embedder.embed(query)
         posts = await self._vector_store.search_posts(
+            chat_id=context.chat_id,
             vector=vector,
             top_k=self._top_k,
             score_threshold=self._score_threshold,
