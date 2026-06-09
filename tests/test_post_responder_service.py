@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock
 from gym_tg_bot.chat import ToolCall
 from gym_tg_bot.memory import ThreadMemory
 from gym_tg_bot.services.post_responder_service import PostResponderService
+from gym_tg_bot.tools.base import ToolContext
 
 
 async def test_agent_loop_executes_tool_and_returns_final_answer(tmp_path: Path) -> None:
@@ -33,4 +34,4 @@ async def test_agent_loop_executes_tool_and_returns_final_answer(tmp_path: Path)
 
     assert result == "A 100-kilogram bench press is good progress, sir"
     assert llm.chat_with_tools.call_count == 2
-    fake_tool.assert_called_once_with(query="bench")
+    fake_tool.assert_called_once_with({"query": "bench"}, ToolContext(chat_id=1))

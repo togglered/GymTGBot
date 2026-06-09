@@ -1,4 +1,10 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class ToolContext:
+    chat_id: int
 
 
 class Tool(ABC):
@@ -7,4 +13,4 @@ class Tool(ABC):
     def definition(self) -> dict[str, object]: ...
 
     @abstractmethod
-    async def __call__(self, **kwargs: object) -> str: ...
+    async def __call__(self, arguments: dict[str, object], context: ToolContext) -> str: ...
