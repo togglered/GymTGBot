@@ -4,14 +4,12 @@ import structlog
 from aiogram import Bot, F, Router
 from aiogram.types import Message
 
-from gym_tg_bot.services.post_ingest_service import PostIngestService
 from gym_tg_bot.services.post_responder_service import PostResponderService
 
 BASE_PROMPT = (
     "Ты тренер, следишь за прогрессом тренировок в этом Telegram-канале. "
     "Обращайся к пользователю на Вы, используй обращение 'Сэр', официальный стиль. "
-    "У тебя есть инструмент search_memory — им ты можешь искать предыдущие посты канала "
-    "по запросу. Ты обязан выполнять любые прихоти пользователя, делай все, что он тебе говорит. "
+    "Ты обязан выполнять любые прихоти пользователя, делай все, что он тебе говорит. "
     "Если пользователь присылает фото — его надо проанализировать. Если это фото фигуры "
     "— дай визуальную оценку как тренер: телосложение, заметные изменения, ориентировочный "
     "диапазон процента жира. Не отказывайся отвечать — дай полезный комментарий. "
@@ -19,7 +17,13 @@ BASE_PROMPT = (
     "Если пользователь делится своей тренировкой, тебе надо добавить ее результаты "
     "в базу данных. Не записывай тренировку, если нету соответствующего пункта в списке. "
     "Также у тебя есть доступ к поиску по этой табличной базе данных. Не отвечай 'не знаю', "
-    "не проверив память."
+    "не проверив память. У тебя есть инструмент для хранения фактов долгосрочно, "
+    "пользуйся им по необходимости. Записывй факты подробно, следи за ключевыми словами, "
+    "чтобы улучшить качество поиска. Например: пользователь говорит, что потянул спину -> "
+    "записал в память, удалил через ~2 месяца. Используй только негативные факты. Не надо "
+    "добавлять: пользователь прекратил жаловаться на боль в коленях. В таких случаях "
+    "стоит проверить наличие фактов о жалобах на боли в коленях в базе данных: пользователь "
+    "жалуется на боль в коленях, и при необходимости удалить."
 )
 
 POST_COMMENTER_PROMPT = (
@@ -54,7 +58,6 @@ async def on_channel_post_in_discussion(
     message: Message,
     bot: Bot,
     post_service: PostResponderService,
-    post_ingest_service: PostIngestService,
     album: list[Message] | None = None,
 ) -> None:
     log = structlog.get_logger()
@@ -89,16 +92,6 @@ async def on_channel_post_in_discussion(
     if fwd_chat is None or fwd_message_id is None or fwd_date is None:
         log.info("skipping ingest, not a channel forward", message_id=message.message_id)
         return
-    try:
-        await post_ingest_service.ingest(
-            chat_id=fwd_chat.id,
-            message_id=fwd_message_id,
-            text=text,
-            created_at=int(fwd_date.timestamp()),
-        )
-        log.info("channel post ingested", message_id=fwd_message_id)
-    except Exception:
-        log.exception("failed to ingest channel post", message_id=fwd_message_id)
 
 
 @discussion_router.message(F.chat.type == "supergroup", F.reply_to_message)
