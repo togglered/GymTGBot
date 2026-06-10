@@ -2,6 +2,10 @@
 
 A Telegram AI agent for tracking gym progress. It replies in isolated chat threads, remembers long-term facts, stores workout history, and analyzes photos.
 
+<p align="center">
+  <img src="docs/4.png" alt="Long-term memory using" width="600">
+</p>
+
 ## Features
 
 * Keeps conversations isolated by chat and thread.
@@ -24,18 +28,62 @@ A Telegram AI agent for tracking gym progress. It replies in isolated chat threa
 * Telegram Bot API token
 * OpenAI API token
 
+## Telegram Setup
+
+Before running the bot, prepare the Telegram side:
+
+1. Create a Telegram **channel**.
+2. Create a **discussion group** and link it to the channel
+   (Channel → *Manage Channel* → *Discussion* → add/link a group).
+3. Add your bot as an **administrator** of the channel.
+4. Add your bot as an **administrator** of the linked discussion group.
+
+This is required because the bot operates inside the channel's discussion
+threads, where each topic/thread is kept isolated.
+
 ## Installation and Running
 
 ```bash
 uv sync                      # Install dependencies
 cp .env.example .env         # Fill in the required environment variables
+```
+
+Then complete the **Telegram Setup** steps above (create the channel,
+link a discussion group, and add the bot as an admin to both).
+
+```bash
 uv run python -m gym_tg_bot  # Start the application
 ```
 
 ## Development
 
 ```bash
-uv run pytest                              # Run tests
+uv run pytest                               # Run tests
 uv run ruff format . && uv run ruff check . # Format and lint
-uv run mypy src tests                      # Run type checks
+uv run mypy src tests                       # Run type checks
 ```
+
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="docs/1.png" alt="Logging a workout" width="400"><br>
+      <sub>Logging workouts</sub>
+    </td>
+    <td align="center">
+      <img src="docs/2.png" alt="Analyzing meal photos" width="400"><br>
+      <sub>Analyzing meal photos</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="docs/3.png" alt="Recalling long-term facts" width="400"><br>
+      <sub>Recalling long-term facts</sub>
+    </td>
+    <td align="center">
+      <img src="docs/4.png" alt="Long-term memory" width="400"><br>
+      <sub>Tracking workout history</sub>
+    </td>
+  </tr>
+</table>
