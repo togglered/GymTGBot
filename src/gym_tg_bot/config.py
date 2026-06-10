@@ -13,6 +13,8 @@ class Settings(BaseSettings):
 
     db_path: Path = Path("data/gym_tg_bot.db")
 
+    csv_folder_parh: Path = Path("data/csvs")
+
     bot_token: SecretStr
     openai_api_key: SecretStr
     openai_model: str = "gpt-4o-mini"
