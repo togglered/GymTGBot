@@ -55,6 +55,22 @@ link a discussion group, and add the bot as an admin to both).
 uv run python -m gym_tg_bot  # Start the application
 ```
 
+## With Docker
+
+Requires only Docker — no local Python or uv. Still create `.env` and
+complete the **Telegram Setup** steps above first.
+
+```bash
+cp .env.example .env          # Fill in BOT_TOKEN and OPENAI_API_KEY
+docker compose up -d --build  # Build the image and start the bot
+docker compose logs -f        # Follow logs
+docker compose down           # Stop the bot
+```
+
+Application data (the SQLite database and Qdrant storage) lives in a named
+volume mounted at /app/data, so it persists across container restarts and
+rebuilds.
+
 ## Development
 
 ```bash
