@@ -13,10 +13,12 @@ from gym_tg_bot.logging import configure_logging
 from gym_tg_bot.memory import ThreadMemory
 from gym_tg_bot.middlewares.album import AlbumMiddleware
 from gym_tg_bot.services.post_responder_service import PostResponderService
+from gym_tg_bot.table_store import TableStore
 from gym_tg_bot.tools.base import Tool
 from gym_tg_bot.tools.memory.forget_memory import ForgetMemoryTool
 from gym_tg_bot.tools.memory.remember_memory import RememberMemoryTool
 from gym_tg_bot.tools.memory.search_memory import SearchMemoryTool
+from gym_tg_bot.tools.table.create_csv_tool import CreateTableTool
 from gym_tg_bot.tools.workouts.add_workout import AddWorkoutTool
 from gym_tg_bot.tools.workouts.query_workout import QueryWorkoutTool
 from gym_tg_bot.vector_store import VectorStore
@@ -46,6 +48,7 @@ async def main() -> None:
     )
     vector_store = VectorStore(path=settings.qdrant_path, vector_size=OPENAI_EMBEDDING_SIZE)
     workout_store = WorkoutStore(settings.db_path)
+    table_store = TableStore(settings.csv_folder_parh)
 
     await vector_store.ensure_collection()
     await workout_store.ensure_schema()
@@ -73,6 +76,7 @@ async def main() -> None:
         ),
         AddWorkoutTool(workout_store),
         QueryWorkoutTool(workout_store),
+        CreateTableTool(table_store),
     ]
     post_service = PostResponderService(llm=llm, memory=memory, tools=tools)
 
