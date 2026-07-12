@@ -19,6 +19,7 @@ from gym_tg_bot.tools.memory.forget_memory import ForgetMemoryTool
 from gym_tg_bot.tools.memory.remember_memory import RememberMemoryTool
 from gym_tg_bot.tools.memory.search_memory import SearchMemoryTool
 from gym_tg_bot.tools.table.create_csv_tool import CreateTableTool
+from gym_tg_bot.tools.table.delete_csv_tool import DeleteTableTool
 from gym_tg_bot.tools.table.list_csv_tool import ListTablesTool
 from gym_tg_bot.tools.table.read_csv_tool import ReadTableTool
 from gym_tg_bot.tools.workouts.add_workout import AddWorkoutTool
@@ -81,6 +82,7 @@ async def main() -> None:
         CreateTableTool(table_store),
         ListTablesTool(table_store),
         ReadTableTool(table_store),
+        DeleteTableTool(table_store),
     ]
     post_service = PostResponderService(llm=llm, memory=memory, tools=tools)
 
