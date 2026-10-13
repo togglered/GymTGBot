@@ -5,12 +5,14 @@ from aiogram import Bot, Dispatcher, Router
 from aiogram.filters import CommandStart
 from aiogram.types import Message
 
+from gym_tg_bot.access import AccessPolicy
 from gym_tg_bot.config import Settings
 from gym_tg_bot.embeddings import OPENAI_EMBEDDING_SIZE, OpenAIEmbedder
 from gym_tg_bot.handlers.discussion import discussion_router
 from gym_tg_bot.llm import OpenAILLMClient
 from gym_tg_bot.logging import configure_logging
 from gym_tg_bot.memory import ThreadMemory
+from gym_tg_bot.middlewares.access import AccessMiddleware
 from gym_tg_bot.middlewares.album import AlbumMiddleware
 from gym_tg_bot.services.post_responder_service import PostResponderService
 from gym_tg_bot.table_store import TableStore
@@ -61,6 +63,15 @@ async def main() -> None:
 
     dp = Dispatcher()
 
+    dp.message.outer_middleware(
+        AccessMiddleware(
+            AccessPolicy(
+                channel_id=settings.allowed_channel_id,
+                chat_id=settings.allowed_chat_id,
+                user_id=settings.allowed_user_id,
+            )
+        )
+    )
     dp.message.middleware(AlbumMiddleware())
 
     tools: list[Tool] = [
