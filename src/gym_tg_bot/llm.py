@@ -2,6 +2,7 @@ import json
 from typing import Any, Protocol, cast
 
 from openai import AsyncOpenAI
+from openai.types.chat import ChatCompletion
 from openai.types.chat.chat_completion_message_tool_call import ChatCompletionMessageToolCall
 
 from gym_tg_bot.chat import ChatMessage, ContentPart, ToolCall, ToolResult
@@ -37,9 +38,17 @@ class LLMClient(Protocol):
 
 
 class OpenAILLMClient:
-    def __init__(self, api_key: str, model: str = "gpt-4o-mini") -> None:
+    def __init__(
+        self,
+        api_key: str,
+        model: str = "gpt-4o-mini",
+        reasoning_effort: str | None = None,
+    ) -> None:
         self._client = AsyncOpenAI(api_key=api_key)
         self._model = model
+        self._request_params: dict[str, Any] = {}
+        if reasoning_effort:
+            self._request_params["reasoning_effort"] = reasoning_effort
 
     async def chat(self, system: str, messages: list[ChatMessage]) -> str:
         api_messages: list[Any] = [{"role": "system", "content": system}]
@@ -48,9 +57,10 @@ class OpenAILLMClient:
                 api_messages.append({"role": "user", "content": _content_to_api(msg.content)})
             else:
                 api_messages.append({"role": "assistant", "content": _content_to_api(msg.content)})
-        response = await self._client.chat.completions.create(
+        response: ChatCompletion = await self._client.chat.completions.create(
             model=self._model,
             messages=api_messages,
+            **self._request_params,
         )
         content = response.choices[0].message.content
         if content is None:
@@ -93,10 +103,11 @@ class OpenAILLMClient:
                         }
                     )
 
-        response = await self._client.chat.completions.create(
+        response: ChatCompletion = await self._client.chat.completions.create(
             model=self._model,
             messages=api_messages,
             tools=cast(list[Any], tools),
+            **self._request_params,
         )
 
         choice = response.choices[0]

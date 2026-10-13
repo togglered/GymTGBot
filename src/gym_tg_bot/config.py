@@ -22,4 +22,5 @@ class Settings(BaseSettings):
     bot_token: SecretStr
     openai_api_key: SecretStr
     openai_model: str = "gpt-4o-mini"
+    openai_reasoning_effort: str | None = None
     log_level: str = "INFO"

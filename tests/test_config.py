@@ -54,3 +54,29 @@ def test_settings_fails_without_access_settings(
 
     with pytest.raises(ValidationError):
         Settings()  # type: ignore[call-arg]
+
+
+def test_reasoning_effort_defaults_to_none(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    _set_required_env(monkeypatch)
+    monkeypatch.delenv("OPENAI_REASONING_EFFORT", raising=False)
+
+    settings = Settings()  # type: ignore[call-arg]
+
+    assert settings.openai_reasoning_effort is None
+
+
+def test_reasoning_effort_loads_from_env(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    _set_required_env(monkeypatch)
+    monkeypatch.setenv("OPENAI_REASONING_EFFORT", "none")
+
+    settings = Settings()  # type: ignore[call-arg]
+
+    assert settings.openai_reasoning_effort == "none"
