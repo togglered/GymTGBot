@@ -66,3 +66,16 @@ async def test_isolation_between_chats(tool: CreateTableTool, store: TableStore)
 
     assert store.read_table(1, "diet") == "chicken\n"
     assert store.read_table(2, "diet") == "rice\n"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("bad_content", [["meal", "protein"], [1, 2], [["meal"], "chicken"]])
+async def test_invalid_content(
+    tool: CreateTableTool, store: TableStore, bad_content: object
+) -> None:
+    result = await tool(
+        {"table_name": "diet", "content": bad_content},
+        ToolContext(chat_id=123),
+    )
+    assert "Invalid table content" in result
+    assert store.list_tables(123) == []

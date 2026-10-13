@@ -3,6 +3,24 @@ import re
 from pathlib import Path
 
 _VALID_TABLE_NAME = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
+_SCALAR_TYPES = (str, int, float, bool, type(None))
+
+
+def _validate_content(content: object) -> None:
+    if not isinstance(content, list):
+        raise ValueError("Invalid table content: expected a list of rows.")
+    for row_index, row in enumerate(content):
+        if not isinstance(row, list):
+            raise ValueError(
+                f"Invalid table content: row {row_index} must be a list of cell values, "
+                f"got {type(row).__name__}. Pass rows as a list of lists."
+            )
+        for cell_index, cell in enumerate(row):
+            if not isinstance(cell, _SCALAR_TYPES):
+                raise ValueError(
+                    f"Invalid table content: cell {cell_index} in row {row_index} "
+                    f"must be a string or a number, got {type(cell).__name__}."
+                )
 
 
 class TableStore:
@@ -26,6 +44,7 @@ class TableStore:
 
     def create_table(self, chat_id: int, table_name: str, content: list[list[object]]) -> Path:
         csv_path = self._convert_name_to_path(chat_id, table_name)
+        _validate_content(content)
         csv_path.parent.mkdir(parents=True, exist_ok=True)
         if csv_path.exists():
             raise FileExistsError(f"Table {table_name} already exists")
@@ -36,6 +55,7 @@ class TableStore:
 
     def update_table(self, chat_id: int, table_name: str, content: list[list[object]]) -> Path:
         csv_path = self._convert_name_to_path(chat_id, table_name)
+        _validate_content(content)
         if not csv_path.exists():
             raise FileNotFoundError(f"Table {table_name} wasn't found")
         with open(csv_path, "w", newline="", encoding="utf-8") as f:

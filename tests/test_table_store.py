@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import cast
 
 import pytest
 
@@ -130,3 +131,35 @@ def test_isolation_between_chats(store: TableStore) -> None:
 
     assert store.read_table(1, "diet") == "chicken\n"
     assert store.read_table(2, "diet") == "rice\n"
+
+
+@pytest.mark.parametrize(
+    "bad_content",
+    [
+        ["meal", "protein"],
+        [1, 2],
+        "abc",
+        None,
+        {"meal": "protein"},
+        [["meal"], "chicken"],
+        [["meal", ["nested"]]],
+        [["meal", {"a": 1}]],
+    ],
+)
+def test_create_invalid_content_raises(store: TableStore, bad_content: object) -> None:
+    with pytest.raises(ValueError, match="Invalid table content"):
+        store.create_table(123, "diet", cast(list[list[object]], bad_content))
+    assert store.list_tables(123) == []
+
+
+@pytest.mark.parametrize("bad_content", [["meal", "protein"], [1, 2], [["meal"], "chicken"]])
+def test_update_invalid_content_keeps_table(store: TableStore, bad_content: object) -> None:
+    store.create_table(123, "diet", [["meal"], ["chicken"]])
+    with pytest.raises(ValueError, match="Invalid table content"):
+        store.update_table(123, "diet", cast(list[list[object]], bad_content))
+    assert store.read_table(123, "diet") == "meal\nchicken\n"
+
+
+def test_scalar_cells_are_accepted(store: TableStore) -> None:
+    store.create_table(123, "mixed", [["meal", "protein"], ["chicken", 20], ["rice", 7.5, None]])
+    assert store.read_table(123, "mixed") == "meal,protein\nchicken,20\nrice,7.5,\n"
