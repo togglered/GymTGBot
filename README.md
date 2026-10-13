@@ -43,6 +43,35 @@ Before running the bot, prepare the Telegram side:
 This is required because the bot operates inside the channel's discussion
 threads, where each topic/thread is kept isolated.
 
+## Access Restriction
+
+The bot reacts only to:
+
+* posts of one channel (they arrive in the linked discussion group);
+* messages of one user in that discussion group.
+
+Everything else, including private messages, is ignored silently. Comments
+written on behalf of the channel are ignored too.
+
+Messages sent anonymously as the group itself ("Send Anonymously") are
+accepted: Telegram hides which admin wrote them, so they cannot be checked by
+user. If the group has other admins you do not trust, turn "Remain Anonymous"
+off in your admin rights instead and write under your own name.
+
+Set all three variables in `.env`, the bot does not start without them:
+
+```bash
+ALLOWED_CHANNEL_ID=-1001234567890  # the channel
+ALLOWED_CHAT_ID=-1009876543210     # the linked discussion group
+ALLOWED_USER_ID=123456789          # your Telegram user ID
+```
+
+To find the IDs, copy the link to any message in the channel or in the group
+(`https://t.me/c/1234567890/5`) and put `-100` before the number from the link.
+Your user ID and the IDs of public channels and groups, whose links contain a
+username instead of a number, can be found with a bot such as @userinfobot or
+@getidsbot.
+
 ## Installation and Running
 
 ```bash
