@@ -22,6 +22,7 @@ from gym_tg_bot.tools.table.create_csv_tool import CreateTableTool
 from gym_tg_bot.tools.table.delete_csv_tool import DeleteTableTool
 from gym_tg_bot.tools.table.list_csv_tool import ListTablesTool
 from gym_tg_bot.tools.table.read_csv_tool import ReadTableTool
+from gym_tg_bot.tools.table.update_csv_tool import UpdateTableTool
 from gym_tg_bot.tools.workouts.add_workout import AddWorkoutTool
 from gym_tg_bot.tools.workouts.query_workout import QueryWorkoutTool
 from gym_tg_bot.vector_store import VectorStore
@@ -82,6 +83,7 @@ async def main() -> None:
         CreateTableTool(table_store),
         ListTablesTool(table_store),
         ReadTableTool(table_store),
+        UpdateTableTool(table_store),
         DeleteTableTool(table_store),
     ]
     post_service = PostResponderService(llm=llm, memory=memory, tools=tools)
