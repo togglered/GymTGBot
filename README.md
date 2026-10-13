@@ -69,9 +69,9 @@ docker compose logs -f        # Follow logs
 docker compose down           # Stop the bot
 ```
 
-Application data (the SQLite database and Qdrant storage) lives in a named
-volume mounted at /app/data, so it persists across container restarts and
-rebuilds.
+Application data (the SQLite database, Qdrant storage, and CSV tables) lives in
+a named volume mounted at /app/data, so it persists across container restarts
+and rebuilds.
 
 ## Development
 
