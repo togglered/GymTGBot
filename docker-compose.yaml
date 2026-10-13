@@ -1,0 +1,10 @@
+services:
+  bot:
+    build: .
+    env_file: .env
+    volumes:
+      - gym_data:/app/data
+    restart: unless-stopped
+
+volumes:
+  gym_data:
