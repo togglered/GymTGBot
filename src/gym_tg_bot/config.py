@@ -15,6 +15,10 @@ class Settings(BaseSettings):
 
     csv_folder_path: Path = Path("data/csvs")
 
+    allowed_channel_id: int
+    allowed_chat_id: int
+    allowed_user_id: int
+
     bot_token: SecretStr
     openai_api_key: SecretStr
     openai_model: str = "gpt-4o-mini"
