@@ -27,3 +27,31 @@ def test_settings_fails_without_token(
 
     with pytest.raises(ValidationError):
         Settings()  # type: ignore[call-arg]
+
+
+def test_reasoning_effort_defaults_to_none(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("BOT_TOKEN", "test_token_123")
+    monkeypatch.setenv("OPENAI_API_KEY", "test_openai_key")
+    monkeypatch.delenv("OPENAI_REASONING_EFFORT", raising=False)
+
+    settings = Settings()  # type: ignore[call-arg]
+
+    assert settings.openai_reasoning_effort is None
+
+
+def test_reasoning_effort_loads_from_env(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("BOT_TOKEN", "test_token_123")
+    monkeypatch.setenv("OPENAI_API_KEY", "test_openai_key")
+    monkeypatch.setenv("OPENAI_REASONING_EFFORT", "none")
+
+    settings = Settings()  # type: ignore[call-arg]
+
+    assert settings.openai_reasoning_effort == "none"

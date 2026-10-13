@@ -45,6 +45,7 @@ async def main() -> None:
     llm = OpenAILLMClient(
         api_key=settings.openai_api_key.get_secret_value(),
         model=settings.openai_model,
+        reasoning_effort=settings.openai_reasoning_effort,
     )
     memory = ThreadMemory(settings.db_path)
     embedder = OpenAIEmbedder(
