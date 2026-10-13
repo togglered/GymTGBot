@@ -13,6 +13,17 @@ class ExerciseLabel(StrEnum):
     BENCH_PRESS = auto()
     SQUAT = auto()
     DEADLIFT = auto()
+    BICEPS_CURL = auto()
+    DUMBBELL_SHRUG = auto()
+    DUMBBELL_LATERAL_RAISE = auto()
+    HACK_SQUAT = auto()
+    TRICEPS_PUSHDOWN = auto()
+    HORIZONTAL_ROW_WIDE_GRIP = auto()
+    HORIZONTAL_ROW_PARALLEL_GRIP = auto()
+    VERTICAL_PULLDOWN_WIDE_GRIP = auto()
+    VERTICAL_PULLDOWN_PARALLEL_GRIP = auto()
+    CALF_RAISE = auto()
+    HAMSTRING_CURL = auto()
 
 
 @dataclass(frozen=True)
