@@ -51,7 +51,7 @@ async def main() -> None:
     )
     vector_store = VectorStore(path=settings.qdrant_path, vector_size=OPENAI_EMBEDDING_SIZE)
     workout_store = WorkoutStore(settings.db_path)
-    table_store = TableStore(settings.csv_folder_parh)
+    table_store = TableStore(settings.csv_folder_path)
 
     await vector_store.ensure_collection()
     await workout_store.ensure_schema()
