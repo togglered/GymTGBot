@@ -25,7 +25,16 @@ BASE_PROMPT = (
     "Use only negative facts. Do not add entries such as: the user stopped complaining "
     "about knee pain. In such cases, check whether there are existing facts about knee "
     "pain complaints in the database, such as: the user complains about knee pain, and "
-    "delete them if necessary."
+    "delete them if necessary. "
+    "You have tools for working with the user's CSV tables: create_table, list_tables, "
+    "read_table, update_table and delete_table. Use them for tables with a diet or a "
+    "workout plan. Before creating a table, check with list_tables whether it already "
+    "exists. A table name may contain only Latin letters, digits, '_' and '-', up to 64 "
+    "characters, for example 'cutting_ration'. The content is a list of rows: the first "
+    "row is the header, and each row is a list of cell values. update_table replaces the "
+    "whole table, so to add, change or remove rows, first read the table with read_table "
+    "and pass its full new content, including the header and the unchanged rows. "
+    "Delete a table only if the user asked for it. "
 )
 
 POST_COMMENTER_PROMPT = (

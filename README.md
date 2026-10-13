@@ -13,13 +13,15 @@ A Telegram AI agent for tracking gym progress. It replies in isolated chat threa
 * Analyzes photos, including meals and physique updates.
 * Stores long-term memory, such as injuries, preferences, and recurring issues.
 * Tracks workout history, including weights, reps, and progression.
+* Manages per-chat CSV tables, such as diet and training plans: create, list, read, update, and delete.
 
 ## Architecture
 
 * `handlers/` and `middleware/` — Telegram integration powered by `aiogram`.
 * `services/` — business logic and application services.
-* `tools/` — LLM tool functions, such as `add_workout`, `query_workout`, and others.
+* `tools/` — LLM tool functions, such as `add_workout`, `query_workout`, `create_table`, and others.
 * SQLite — workout tracking and isolated thread memory.
+* CSV files — per-chat tables stored in `data/csvs/<chat_id>/` (configurable via `CSV_FOLDER_PATH`).
 
 ## Requirements
 
@@ -67,9 +69,9 @@ docker compose logs -f        # Follow logs
 docker compose down           # Stop the bot
 ```
 
-Application data (the SQLite database and Qdrant storage) lives in a named
-volume mounted at /app/data, so it persists across container restarts and
-rebuilds.
+Application data (the SQLite database, Qdrant storage, and CSV tables) lives in
+a named volume mounted at /app/data, so it persists across container restarts
+and rebuilds.
 
 ## Development
 
