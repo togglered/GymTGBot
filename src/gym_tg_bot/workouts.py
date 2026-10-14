@@ -24,6 +24,7 @@ class ExerciseLabel(StrEnum):
     VERTICAL_PULLDOWN_PARALLEL_GRIP = auto()
     CALF_RAISE = auto()
     HAMSTRING_CURL = auto()
+    INCLINE_BENCH_PRESS = auto()
 
 
 @dataclass(frozen=True)
