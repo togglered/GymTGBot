@@ -54,6 +54,7 @@ NEW_EXERCISES = [
     ("vertical_pulldown_parallel_grip", ExerciseLabel.VERTICAL_PULLDOWN_PARALLEL_GRIP),
     ("calf_raise", ExerciseLabel.CALF_RAISE),
     ("hamstring_curl", ExerciseLabel.HAMSTRING_CURL),
+    ("incline_bench_press", ExerciseLabel.INCLINE_BENCH_PRESS),
 ]
 
 
@@ -74,6 +75,7 @@ def test_exercise_values_are_stable() -> None:
         "vertical_pulldown_parallel_grip",
         "calf_raise",
         "hamstring_curl",
+        "incline_bench_press",
     ]
 
 
