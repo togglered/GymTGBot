@@ -25,6 +25,7 @@ class ExerciseLabel(StrEnum):
     CALF_RAISE = auto()
     HAMSTRING_CURL = auto()
     INCLINE_BENCH_PRESS = auto()
+    PULL_UP = auto()
 
 
 @dataclass(frozen=True)

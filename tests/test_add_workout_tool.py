@@ -55,6 +55,7 @@ NEW_EXERCISES = [
     ("calf_raise", ExerciseLabel.CALF_RAISE),
     ("hamstring_curl", ExerciseLabel.HAMSTRING_CURL),
     ("incline_bench_press", ExerciseLabel.INCLINE_BENCH_PRESS),
+    ("pull_up", ExerciseLabel.PULL_UP),
 ]
 
 
@@ -76,6 +77,7 @@ def test_exercise_values_are_stable() -> None:
         "calf_raise",
         "hamstring_curl",
         "incline_bench_press",
+        "pull_up",
     ]
 
 
